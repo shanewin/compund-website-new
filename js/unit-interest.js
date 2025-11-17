@@ -1,3 +1,5 @@
+// Handles the unit-interest modal submissions: posts with fetch, handles CSRF
+// failures gracefully, and swaps in a thank-you view on success.
 document.addEventListener('DOMContentLoaded', function() {
   const unitForm = document.getElementById('unitInterestForm');
   const submitBtn = unitForm.querySelector('button[type="submit"]');

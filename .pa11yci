@@ -1,0 +1,10 @@
+{
+  "defaults": {
+    "timeout": 60000,
+    "wait": 3000,
+    "threshold": 5
+  },
+  "urls": [
+    "http://localhost:8080/index.html"
+  ]
+}

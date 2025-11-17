@@ -53,17 +53,24 @@ $(function () {
             logo = $(".navbar .logo> img");
         if (bodyScroll > 100) {
             navbar.addClass("nav-scroll");
-            logo.attr('src', 'img/logo.png');
+            logo.attr('src', 'img/doorway-logo.png');
         } else {
             navbar.removeClass("nav-scroll");
-            logo.attr('src', 'img/logo.png');
+            logo.attr('src', 'img/doorway-logo.png');
         }
     });
     
     
-    // Close navbar-collapse when a  clicked
-    $(".navbar-nav .dropdown-item a").on('click', function () {
+    // Close navbar-collapse when any nav link is clicked
+    $(".navbar-nav .nav-link").on('click', function () {
         $(".navbar-collapse").removeClass("show");
+    });
+    
+    // Close navbar-collapse when clicking outside the menu
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.navbar-collapse').length && !$(e.target).closest('.navbar-toggler').length) {
+            $(".navbar-collapse").removeClass("show");
+        }
     });
     
     
@@ -608,4 +615,122 @@ var form = $('.contact__form'),
             url: form.attr('action'),
             data: form_data
         }).done(done_func).fail(fail_func);
+    });
+
+// Panel Image Shuffling with Smooth Crossfade
+$(document).ready(function() {
+    function initPanelShuffle() {
+        $('.panel-shuffle').each(function() {
+            var $img = $(this);
+            var originalSrc = $img.attr('src');
+            var secondSrc = $img.attr('data-image2');
+            var isOriginal = true;
+            
+            if (secondSrc) {
+                // Create a duplicate image for crossfading
+                var $newImg = $img.clone();
+                $img.parent().css('position', 'relative');
+                $newImg.css({
+                    'position': 'absolute',
+                    'top': '0',
+                    'left': '0',
+                    'width': '100%',
+                    'height': '100%',
+                    'opacity': '0',
+                    'transition': 'opacity 2.5s ease-in-out'
+                });
+                
+                // Add smooth transition to original image too
+                $img.css({
+                    'transition': 'opacity 2.5s ease-in-out'
+                });
+                $img.after($newImg);
+                
+                setInterval(function() {
+                    if (isOriginal) {
+                        $newImg.attr('src', secondSrc);
+                        $newImg.css('opacity', '1');
+                        $img.css('opacity', '0');
+                    } else {
+                        $newImg.attr('src', originalSrc);
+                        $newImg.css('opacity', '1');
+                        $img.css('opacity', '0');
+                    }
+                    
+                    // Swap the images after transition
+                    setTimeout(function() {
+                        var tempSrc = $img.attr('src');
+                        $img.attr('src', $newImg.attr('src'));
+                        $img.css('opacity', '1');
+                        $newImg.css('opacity', '0');
+                    }, 2500);
+                    
+                    isOriginal = !isOriginal;
+                }, 5000);
+            }
+        });
+    }
+    
+    initPanelShuffle();
+});
+
+// Auto-Cycling Building Highlights
+$(document).ready(function() {
+    var buildingCycleInterval;
+    var currentBuilding = 0; // 0 = left, 1 = right
+    var isUserInteracting = false;
+    var resumeTimeout;
+    
+    function highlightBuilding(buildingIndex) {
+        // Remove active state from both buildings
+        $('.building-overlay').removeClass('auto-active');
+        
+        // Add active state to selected building
+        if (buildingIndex === 0) {
+            $('.building-left-overlay').addClass('auto-active');
+        } else {
+            $('.building-right-overlay').addClass('auto-active');
+        }
+    }
+    
+    function startBuildingCycle() {
+        buildingCycleInterval = setInterval(function() {
+            if (!isUserInteracting) {
+                highlightBuilding(currentBuilding);
+                currentBuilding = currentBuilding === 0 ? 1 : 0; // Toggle between 0 and 1
+            }
+        }, 5000);
+    }
+    
+    function stopBuildingCycle() {
+        if (buildingCycleInterval) {
+            clearInterval(buildingCycleInterval);
+            buildingCycleInterval = null;
+        }
+        $('.building-overlay').removeClass('auto-active');
+    }
+    
+    function resumeBuildingCycle() {
+        if (resumeTimeout) {
+            clearTimeout(resumeTimeout);
+        }
+        resumeTimeout = setTimeout(function() {
+            isUserInteracting = false;
+            startBuildingCycle();
+        }, 2000); // Resume 2 seconds after user stops interacting
+    }
+    
+    // User interaction handlers
+    $('.building-overlay').on('mouseenter', function() {
+        isUserInteracting = true;
+        stopBuildingCycle();
+        $('.building-overlay').removeClass('auto-active');
+    });
+    
+    $('.building-overlay').on('mouseleave', function() {
+        resumeBuildingCycle();
+    });
+    
+    // Start the auto-cycle
+    startBuildingCycle();
     });

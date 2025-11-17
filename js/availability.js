@@ -1,3 +1,5 @@
+// Drives availability table: pulls unit data from Google Apps Script, normalizes it,
+// then wires up filters, price sliders, pagination, and detail modals.
 document.addEventListener("DOMContentLoaded", function () {
   let units = [];
   let filteredUnits = [];
@@ -22,11 +24,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const leasedUnitNumber = document.getElementById("leasedUnitNumber");
   
   // Filter elements
-  const buildingFilter = document.getElementById("buildingFilter");
   const bedroomFilter = document.getElementById("bedroomFilter");
   const bathroomFilter = document.getElementById("bathroomFilter");
   const outdoorFilter = document.getElementById("outdoorFilter");
-  const availabilityFilter = document.getElementById("availabilityFilter");
+
   const minPriceSlider = document.getElementById("minPriceSlider");
   const maxPriceSlider = document.getElementById("maxPriceSlider");
   const minPriceDisplay = document.getElementById("minPriceDisplay");
@@ -60,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Fetch units from Google Apps Script
   async function fetchUnits() {
-    tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4">Loading units...</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4">Loading units...</td></tr>`;
     
     try {
       // Fetch directly from your Google Apps Script
@@ -128,11 +129,21 @@ document.addEventListener("DOMContentLoaded", function () {
       initializeCustomDropdowns(); // Initialize custom dropdowns
       applyAdvancedFilters();
       
+      // Hide loading indicator on success (with small delay for better UX)
+      setTimeout(() => {
+        hideLoadingIndicator();
+      }, 500);
+      
     } catch (error) {
       console.error('Error fetching unit data:', error);
-      tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">
+      tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-danger">
         Failed to load data. Please refresh the page.
       </td></tr>`;
+      
+      // Hide loading indicator on error (with small delay)
+      setTimeout(() => {
+        hideLoadingIndicator();
+      }, 500);
     }
   }
 
@@ -144,9 +155,8 @@ document.addEventListener("DOMContentLoaded", function () {
         return false;
       }
 
-      // Building filter - use currentBuilding if set, otherwise use dropdown
-      const targetBuilding = currentBuilding || buildingFilter.value;
-      if (targetBuilding !== 'all' && unit.building !== targetBuilding) {
+      // Building filter - use currentBuilding if set
+      if (currentBuilding && unit.building !== currentBuilding) {
         return false;
       }
 
@@ -197,14 +207,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return false;
       }
 
-      // Availability filter
-      if (availabilityFilter.value !== 'all') {
-        if (availabilityFilter.value === 'available' && unit.isleased) {
-          return false;
-        } else if (availabilityFilter.value === 'leased' && !unit.isleased) {
-          return false;
-        }
-      }
+
 
       return true;
     });
@@ -218,7 +221,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!tableBody) return;
     
     if (filteredUnits.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4">
+      tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4">
         No units match your criteria. Try adjusting your filters.
       </td></tr>`;
       return;
@@ -243,7 +246,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       
       row.innerHTML = `
-        <td>${unit.building || ''}</td>
         <td>${unit.unit || ''}</td>
         <td>${unit.bedBath || ''}</td>
         <td>${unit.outdoor || ''}</td>
@@ -375,6 +377,22 @@ document.addEventListener("DOMContentLoaded", function () {
      updatePriceDisplay();
   }
 
+  // Update price display position to align with slider thumbs
+  function updatePriceDisplayPositions() {
+    const minVal = parseInt(minPriceSlider.value);
+    const maxVal = parseInt(maxPriceSlider.value);
+    const minRange = parseInt(minPriceSlider.min);
+    const maxRange = parseInt(minPriceSlider.max);
+    
+    // Calculate percentage positions
+    const minPercent = ((minVal - minRange) / (maxRange - minRange)) * 100;
+    const maxPercent = ((maxVal - minRange) / (maxRange - minRange)) * 100;
+    
+    // Position the displays to align with slider thumbs
+    minPriceDisplay.style.left = `${minPercent}%`;
+    maxPriceDisplay.style.left = `${maxPercent}%`;
+  }
+
   // Update price display
   function updatePriceDisplay() {
     const minVal = parseInt(minPriceSlider.value);
@@ -393,18 +411,17 @@ document.addEventListener("DOMContentLoaded", function () {
     const formatPrice = (price) => '$' + price.toLocaleString();
     minPriceDisplay.textContent = formatPrice(parseInt(minPriceSlider.value));
     maxPriceDisplay.textContent = formatPrice(parseInt(maxPriceSlider.value));
+    
+    // Update positions to align with slider thumbs
+    updatePriceDisplayPositions();
   }
 
   // Clear all filters
   function clearAllFilters() {
-    // Don't reset building filter if we're in building-specific mode
-    if (!currentBuilding) {
-      buildingFilter.value = 'all';
-    }
+    // Reset dropdown filters
     bedroomFilter.value = 'all';
     bathroomFilter.value = 'all';
     outdoorFilter.value = 'all';
-    availabilityFilter.value = 'all';
     
     // Update custom dropdown displays
     updateCustomDropdownDisplays();
@@ -418,9 +435,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateCustomDropdownDisplays() {
-    const selects = [buildingFilter, bedroomFilter, bathroomFilter, outdoorFilter, availabilityFilter];
+    const selects = [bedroomFilter, bathroomFilter, outdoorFilter];
     
     selects.forEach(select => {
+      if (select) { // Check if select element exists
       const customDropdown = select.parentNode.querySelector('.custom-dropdown');
       if (customDropdown) {
         const selectedText = customDropdown.querySelector('.dropdown-selected span');
@@ -433,6 +451,7 @@ document.addEventListener("DOMContentLoaded", function () {
         options.forEach((option, index) => {
           option.classList.toggle('selected', index === select.selectedIndex);
         });
+        }
       }
     });
   }
@@ -459,7 +478,7 @@ document.addEventListener("DOMContentLoaded", function () {
       // Update modal title
       const modalTitle = document.getElementById('unitModalLabel');
       if (modalTitle) {
-        modalTitle.textContent = `Unit ${unit.unit} Details`;
+        modalTitle.textContent = `${unit.unit} Details`;
       }
       
       // Update unit description
@@ -491,7 +510,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (unitImagesEl && unit.images && unit.images.length > 0) {
         unitImagesEl.innerHTML = unit.images.map(image => {
           const filename = image.split('/').pop();
-          return `<img src="assets/images/units/${filename}" class="img-fluid mb-2" alt="Unit ${unit.unit}" style="max-height: 300px;">`;
+          return `<img src="assets/images/units/${filename}" class="img-fluid mb-2" alt="Unit ${unit.unit}">`;
         }).join('');
       } else if (unitImagesEl) {
         unitImagesEl.innerHTML = '<p class="text-muted">Unit images coming soon.</p>';
@@ -543,6 +562,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Custom Dropdown System
+  let dropdownEventListenerAdded = false;
+  
   function initializeCustomDropdowns() {
     const selects = document.querySelectorAll('.filter-select');
     
@@ -550,15 +571,24 @@ document.addEventListener("DOMContentLoaded", function () {
       createCustomDropdown(select);
     });
     
-    // Close dropdowns when clicking outside
+    // Close dropdowns when clicking outside (only add once)
+    if (!dropdownEventListenerAdded) {
     document.addEventListener('click', function(e) {
       if (!e.target.closest('.custom-dropdown')) {
         closeAllDropdowns();
       }
     });
+      dropdownEventListenerAdded = true;
+    }
   }
 
   function createCustomDropdown(select) {
+    // Check if dropdown already exists
+    const existingDropdown = select.parentNode.querySelector('.custom-dropdown');
+    if (existingDropdown) {
+      return; // Already has a custom dropdown, skip creation
+    }
+    
     const container = document.createElement('div');
     container.className = 'custom-dropdown';
     
@@ -650,9 +680,38 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // Show loading indicator
+  function showLoadingIndicator() {
+    // Create loading overlay if it doesn't exist
+    let loadingOverlay = document.getElementById('availability-loading');
+    if (!loadingOverlay) {
+      loadingOverlay = document.createElement('div');
+      loadingOverlay.id = 'availability-loading';
+      loadingOverlay.innerHTML = `
+        <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">Loading Apartments...</div>
+        </div>
+      `;
+      document.body.appendChild(loadingOverlay);
+    }
+    loadingOverlay.style.display = 'flex';
+  }
+
+  // Hide loading indicator
+  function hideLoadingIndicator() {
+    const loadingOverlay = document.getElementById('availability-loading');
+    if (loadingOverlay) {
+      loadingOverlay.style.display = 'none';
+    }
+  }
+
   // Initialize Availability System for a specific building
   window.initializeAvailabilitySystem = function(building) {
     console.log('Initializing availability system for building:', building);
+    
+    // Show loading indicator immediately
+    showLoadingIndicator();
     
     // Set the current building
     currentBuilding = building;
@@ -660,11 +719,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // Only initialize once
     if (!isInitialized) {
       // Add event listeners
-      if (buildingFilter) buildingFilter.addEventListener('change', applyAdvancedFilters);
+      // Note: Building filter is now handled by interactive building selection, not a dropdown
       if (bedroomFilter) bedroomFilter.addEventListener('change', applyAdvancedFilters);
       if (bathroomFilter) bathroomFilter.addEventListener('change', applyAdvancedFilters);
       if (outdoorFilter) outdoorFilter.addEventListener('change', applyAdvancedFilters);
-      if (availabilityFilter) availabilityFilter.addEventListener('change', applyAdvancedFilters);
       
       // Add price slider listeners
       if (minPriceSlider) {

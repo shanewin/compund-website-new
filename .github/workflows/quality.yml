@@ -1,0 +1,31 @@
+name: Quality Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint HTML/CSS/JS
+        run: npm run lint
+
+      - name: Start local server
+        run: python3 -m http.server 8080 &
+
+      - name: Accessibility smoke (pa11y)
+        run: npm run a11y
