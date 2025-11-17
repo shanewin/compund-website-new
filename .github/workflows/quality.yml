@@ -25,7 +25,10 @@ jobs:
         run: npm run lint
 
       - name: Start local server
-        run: python3 -m http.server 8080 &
+        run: python3 -m http.server 8083 &
+
+      - name: Wait for server
+        run: sleep 3
 
       - name: Accessibility smoke (pa11y)
         run: npm run a11y
